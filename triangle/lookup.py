@@ -1,104 +1,138 @@
+from itertools import product, combinations
 from fractions import Fraction
-from math import isqrt, gcd
+from math import gcd
+import time
 import sys
 
 sys.set_int_max_str_digits(65536)
 
-# returns isqrt, with optional check for exactness; if not exact, returns -1
-def fraction_isqrt(x: Fraction, exact = False):
-    y = Fraction(isqrt(x.numerator), isqrt(x.denominator))
-    if exact and y * y != x:
-        return Fraction(-1)
-    return y
+# generate ordered coprime pairs using the tree (a, b) => (a + b, b), (a, a + b), starting at (1, 2)
+def generate_pairs(max_depth: int) -> list[tuple[int, int]]:
+    pairs = [(1, 1)]
+    if max_depth <= 0:
+        return pairs
+    stack = [(1, 2, 0)]
+    while len(stack):
+        (a, b, depth) = stack.pop()
+        if a > b:
+            pairs.append((b, a))
+        else:
+            pairs.append((a, b))
+        depth += 1
+        if depth == max_depth:
+            continue
+        stack.append((a + b, b, depth))
+        stack.append((a, a + b, depth))
+    return pairs
+
+# return sorted tuple given a <= b
+def sift(a, b, c):
+    if c >= b:
+        return (a, b, c)
+    if c >= a:
+        return (a, c, b)
+    return (c, a, b)
+
+# generate primitive triangles using the generator (a, b), (c, d) => (ac, bc, d), (ac, ad, b), (c, ad, bd), (a, bc, bd), from list of ordered coprime pairs
+def generate_triangles(pairs: list[tuple[int, int]]):
+    triangles: set[tuple[int, int, int]] = set()
+    for ((a, b), (c, d)) in combinations(pairs, 2):
+        ad = a * d
+        bc = b * c
+        ac = a * c
+        bd = b * d
+        if bd < c + ad:
+            triangles.add((c, ad, bd))
+        if bd < a + bc:
+            triangles.add((a, bc, bd))
+        _ = sift(ac, bc, d)
+        if _[2] < _[0] + _[1]:
+            triangles.add(_)
+        _ = sift(ac, ad, b)
+        if _[2] < _[0] + _[1]:
+            triangles.add(_)
+
+    map: dict[Fraction, list[tuple[int, int, int]]] = {}
+    for triangle in triangles:
+        (a, b, c) = triangle
+        p = a + b + c
+        C = Fraction(p ** 3, (p - 2 * a) * (p - 2 * b) * (p - 2 * c))
+        if not C in map:
+            map[C] = []
+        map[C].append(triangle)
+
+    return map
+
+def from_params(w: int, x: int, y: int, z: int):
+    if w * y <= x * z:
+        return None
+    a = w * x * (y * y + z * z)
+    b = y * z * (w * w + x * x)
+    c = (w * z + x * y) * (w * y - x * z)
+
+    A = w * x * y * z * c
+    p = a + b + c
+    C = Fraction(p * p, A)
+
+    d = gcd(a, b, c)
+    a //= d
+    b //= d
+    c //= d
+    [a, b, c] = sorted([a, b, c])
+    
+    return (C, (a, b, c))
+
 
 # generates Heronian triangles with integer sides.
-# returns { C: set[(a, b, c)] }
-def generate_triangles(MAX: int):
+def generate_heronian_triangles(pairs: list[tuple[int, int]]):
     map: dict[Fraction, set[tuple[int, int, int]]] = dict()
-    for m in range(1, MAX + 1):
-        for n in range(1, MAX + 1):
-            for p in range(1, MAX + 1):
-                for q in range(1, MAX + 1):
-                    if m * p <= n * q:
-                        continue
-                    a = m * n * (p * p + q * q)
-                    b = p * q * (m * m + n * n)
-                    c = (m * q + n * p) * (m * p - n * q)
-                    
-                    s = Fraction(a + b + c, 2)
-                    A = Fraction(m * n * p * q * c)
-                    C = s * s / A
 
-                    d = gcd(a, b, c)
-                    a //= d
-                    b //= d
-                    c //= d
+    for ((x, w), (z, y)) in product(pairs, pairs):
+        kvpair = from_params(w, x, y, z)
+        if kvpair == None:
+            continue
+        (C, triangle) = kvpair
+        if not C in map:
+            map[C] = set()
+        map[C].add(triangle)
 
-                    if a > b:
-                        a, b = b, a
-                    if b > c:
-                        b, c = c, b
-                    if a > b:
-                        a, b = b, a
+    for ((w, x), (z, y)) in product(pairs, pairs):
+        kvpair = from_params(w, x, y, z)
+        if kvpair == None:
+            continue
+        (C, triangle) = kvpair
+        if not C in map:
+            map[C] = set()
+        map[C].add(triangle)
 
-                    if not C in map:
-                        map[C] = set()
-                    map[C].add((a, b, c))
     return map
 
 def main() -> int:
-    if len(sys.argv) < 2:
-        print("usage: lookup.py <a,b,c> [max] [threshold]")
+    start = time.perf_counter_ns()
+    if len(sys.argv) < 3:
+        print("usage: lookup.py <depth> <threshold> [-h]")
         return 1
-    
-    i = 1
-    s = None
-    C = None
-    if "," in sys.argv[1]:
-        [a, b, c] = [Fraction(x) for x in sys.argv[1].split(",")]
-        if a == 0 or b == 0 or c == 0 or a + b <= c or b + c <= a or c + a <= b:
-            print(f"invalid Heronian triangle, exiting")
-            return 1
 
-        s = (a + b + c) / 2
-        A = fraction_isqrt(s * (s - a) * (s - b) * (s - c), True)
-        if A == -1:
-            print(f"invalid Heronian triangle, exiting")
-            return 1
+    depth = int(sys.argv[1])
+    threshold = int(sys.argv[2])
+    heronian = False
+    if len(sys.argv) > 3 and sys.argv[3] == "-h":
+        heronian = True
 
-        C = s * s / A
-        i += 1
+    map = None
+    if heronian:
+        map = generate_heronian_triangles(generate_pairs(depth))
+    else:
+        map = generate_triangles(generate_pairs(depth))
 
-    MAX = 20
-    if len(sys.argv) > i:
-        MAX = int(sys.argv[i])
-    THRESHOLD = None
-    if len(sys.argv) > i + 1:
-        THRESHOLD = int(sys.argv[i + 1])
-
-    map = generate_triangles(MAX)
-    if THRESHOLD != None:
-        for key in map:
-            if len(map[key]) >= THRESHOLD:
-                print(key, map[key])
-
-    if s == None or C == None:
-        return 0
-
-    if not C in map:
-        print("count: 0")
-        return 0
-
-    final: list[list[Fraction]] = []
-    for sides in map[C]:
-        _s = Fraction(sides[0] + sides[1] + sides[2], 2)
-        ratio = s / _s
-        final.append([ratio * x for x in sides])
-
-    final.sort(key = lambda x: x[0])
-    for scaled in final:
-        print(", ".join([f"{x.numerator}/{x.denominator}" if x.denominator != 1 else str(x.numerator) for x in scaled]))
-    print(f"count: {len(final)}")
+    for key in sorted(map.keys(), key=lambda x: x.numerator * x.denominator):
+        if len(map[key]) >= threshold:
+            print(f"{key}:", end="")
+            for triangle in sorted(map[key], key=lambda x: (sum(x), x[0])):
+                print(" " + ",".join([f"{x.numerator}/{x.denominator}" if x.denominator != 1 else str(x.numerator) for x in triangle]), end="")
+            print("")
+    elapsed = time.perf_counter_ns() - start
+    print(f"script finished in {elapsed // 1000000} ms")
 
     return 0
 

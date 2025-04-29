@@ -1,10 +1,12 @@
 from mpmath import mp
+
 mp.dps = 64
 
-D = [mp.mpf(1)/8, mp.mpf(3)/4, mp.mpf(1)/8] # bspline2
-#D = [mp.mpf(1)/6, mp.mpf(2)/3, mp.mpf(1)/6] # bspline3
-#D = [mp.mpf(3)/21, mp.mpf(13)/21, mp.mpf(4)/21] # omoms3
+D = [mp.mpf(1) / 8, mp.mpf(3) / 4, mp.mpf(1) / 8]  # bspline2
+# D = [mp.mpf(1) / 6, mp.mpf(2) / 3, mp.mpf(1) / 6]  # bspline3
+# D = [mp.mpf(3) / 21, mp.mpf(13) / 21, mp.mpf(4) / 21]  # omoms3
 d = 20
+
 
 def lu_decomp(mat):
     n = len(mat)
@@ -14,7 +16,7 @@ def lu_decomp(mat):
     for i in range(n):
         for j in range(i, n):
             U[i][j] = mp.mpf(mat[i][j]) - sum(L[i][k] * U[k][j] for k in range(i))
-        
+
         for j in range(i, n):
             if i == j:
                 L[i][i] = mp.mpf(1)
@@ -23,10 +25,11 @@ def lu_decomp(mat):
 
     return L, U
 
+
 def pretty_zpadded(arr):
     n = len(arr)
     start = 0
-    end = n 
+    end = n
     for i in range(n):
         if arr[i] == 0:
             start = i + 1
@@ -52,7 +55,7 @@ for i in range(d - 2):
 M.append([0] * (d - 2) + [D[0] * C, D[1] * C])
 
 L, U = lu_decomp(M)
-N = C / U[0][1];
+N = C / U[0][1]
 
 print("N", float(N))
 print("C", float(C), "\n")

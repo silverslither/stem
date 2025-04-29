@@ -6,6 +6,7 @@ import sys
 
 sys.set_int_max_str_digits(65536)
 
+
 # generate ordered coprime pairs using the tree (a, b) => (a + b, b), (a, a + b), starting at (1, 2)
 def generate_pairs(max_depth: int) -> list[tuple[int, int]]:
     pairs = [(1, 1)]
@@ -13,7 +14,7 @@ def generate_pairs(max_depth: int) -> list[tuple[int, int]]:
         return pairs
     stack = [(1, 2, 0)]
     while len(stack):
-        (a, b, depth) = stack.pop()
+        a, b, depth = stack.pop()
         if a > b:
             pairs.append((b, a))
         else:
@@ -25,18 +26,20 @@ def generate_pairs(max_depth: int) -> list[tuple[int, int]]:
         stack.append((a, a + b, depth))
     return pairs
 
+
 # return sorted tuple given a <= b
-def sift(a, b, c):
+def sift(a: int, b: int, c: int):
     if c >= b:
         return (a, b, c)
     if c >= a:
         return (a, c, b)
     return (c, a, b)
 
+
 # generate primitive triangles using the generator (a, b), (c, d) => (ac, bc, d), (ac, ad, b), (c, ad, bd), (a, bc, bd), from list of ordered coprime pairs
 def generate_triangles(pairs: list[tuple[int, int]]):
     triangles: set[tuple[int, int, int]] = set()
-    for ((a, b), (c, d)) in combinations(pairs, 2):
+    for (a, b), (c, d) in combinations(pairs, 2):
         ad = a * d
         bc = b * c
         ac = a * c
@@ -54,14 +57,15 @@ def generate_triangles(pairs: list[tuple[int, int]]):
 
     map: dict[Fraction, list[tuple[int, int, int]]] = {}
     for triangle in triangles:
-        (a, b, c) = triangle
+        a, b, c = triangle
         p = a + b + c
-        C = Fraction(p ** 3, (p - 2 * a) * (p - 2 * b) * (p - 2 * c))
-        if not C in map:
-            map[C] = []
-        map[C].append(triangle)
+        k = Fraction(p**3, (p - 2 * a) * (p - 2 * b) * (p - 2 * c))
+        if not k in map:
+            map[k] = []
+        map[k].append(triangle)
 
     return map
+
 
 def from_params(w: int, x: int, y: int, z: int):
     if w * y <= x * z:
@@ -72,40 +76,41 @@ def from_params(w: int, x: int, y: int, z: int):
 
     A = w * x * y * z * c
     p = a + b + c
-    C = Fraction(p * p, A)
+    k = Fraction(p * p, A)
 
     d = gcd(a, b, c)
     a //= d
     b //= d
     c //= d
     [a, b, c] = sorted([a, b, c])
-    
-    return (C, (a, b, c))
+
+    return (k, (a, b, c))
 
 
 # generates Heronian triangles with integer sides.
 def generate_heronian_triangles(pairs: list[tuple[int, int]]):
     map: dict[Fraction, set[tuple[int, int, int]]] = dict()
 
-    for ((x, w), (z, y)) in product(pairs, pairs):
+    for (x, w), (z, y) in product(pairs, pairs):
         kvpair = from_params(w, x, y, z)
         if kvpair == None:
             continue
-        (C, triangle) = kvpair
-        if not C in map:
-            map[C] = set()
-        map[C].add(triangle)
+        k, triangle = kvpair
+        if not k in map:
+            map[k] = set()
+        map[k].add(triangle)
 
-    for ((w, x), (z, y)) in product(pairs, pairs):
+    for (w, x), (z, y) in product(pairs, pairs):
         kvpair = from_params(w, x, y, z)
         if kvpair == None:
             continue
-        (C, triangle) = kvpair
-        if not C in map:
-            map[C] = set()
-        map[C].add(triangle)
+        k, triangle = kvpair
+        if not k in map:
+            map[k] = set()
+        map[k].add(triangle)
 
     return map
+
 
 def main() -> int:
     start = time.perf_counter_ns()
@@ -135,6 +140,7 @@ def main() -> int:
     print(f"script finished in {elapsed // 1000000} ms")
 
     return 0
+
 
 if __name__ == "__main__":
     exit(main())

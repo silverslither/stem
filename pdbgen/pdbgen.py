@@ -11,7 +11,7 @@ mol = Chem.MolFromSmiles(sys.argv[1])
 if mol is None:
     print("invalid SMILES string, exiting")
     os._exit(1)
-    
+
 mol = Chem.AddHs(mol)
 
 AllChem.EmbedMolecule(mol, randomSeed=42)

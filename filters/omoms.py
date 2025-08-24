@@ -14,7 +14,7 @@ x = Symbol("x", real=True)
 k = Symbol("k", integer=True)
 
 base = x - k + Rational(N + 1, 2)
-poly = Piecewise((base ** N, base >= 0), (0, True))
+poly = Piecewise((base**N, base >= 0), (0, True))
 
 term = (-1) ** k * binomial(N + 1, k) * poly
 bspline = simplify(sum(term.subs(k, i) for i in range((N + 2) // 2)) / factorial(N))
@@ -27,11 +27,12 @@ for i in D:
 omoms = expand(simplify(omoms.subs(x, -x)))
 
 C = 1
-for (expr, _) in omoms.args:
+for expr, _ in omoms.args:
     try:
         C = math.lcm(C, *[denom(x) for x in Poly(expr).coeffs()])
     except:
         pass
+
 
 def format(expr, cond, last):
     expr = horner(C * expr)
@@ -42,9 +43,10 @@ def format(expr, cond, last):
     else:
         print(f"    return {expr.replace('*', ' * ')};")
 
+
 print(f"// Normalized to {C}.0")
 print(f"double OMOMS{N}(double x) {{")
-for (expr, cond) in omoms.args[:-1]:
+for expr, cond in omoms.args[:-1]:
     format(expr, cond, expr == omoms.args[-2][0])
 print("}")
 

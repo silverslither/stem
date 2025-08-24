@@ -1,8 +1,8 @@
-from itertools import product, combinations
-from fractions import Fraction
-from math import gcd
-import time
 import sys
+import time
+from fractions import Fraction
+from itertools import combinations, product
+from math import gcd
 
 sys.set_int_max_str_digits(65536)
 
@@ -74,9 +74,9 @@ def from_params(w: int, x: int, y: int, z: int):
     b = y * z * (w * w + x * x)
     c = (w * z + x * y) * (w * y - x * z)
 
-    A = w * x * y * z * c
+    AA = w * x * y * z * c
     p = a + b + c
-    k = Fraction(p * p, A)
+    k = Fraction(p * p, AA)
 
     d = gcd(a, b, c)
     a //= d
